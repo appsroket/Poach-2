@@ -1,10 +1,20 @@
-export default function DashboardPage() {
-  return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
-      <h1 className="font-display text-2xl font-bold">Dashboard</h1>
-      <p className="mt-3 text-sm text-muted">
-        Ranked matches feed (plan-gated) lives here. Route placeholder.
-      </p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { createServerClient, getServerUser } from "@/lib/supabase-server";
+import { getPlan } from "@/lib/plan";
+import { getDashboardMatches } from "@/lib/matches";
+import { DashboardClient } from "@/components/app/DashboardClient";
+
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
+  const user = await getServerUser();
+  if (!user) redirect("/login");
+
+  const supabase = await createServerClient();
+  const [matches, plan] = await Promise.all([
+    getDashboardMatches(supabase),
+    getPlan(user.id),
+  ]);
+
+  return <DashboardClient initialMatches={matches} plan={plan} />;
 }
