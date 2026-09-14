@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase-browser";
 
 export function SignOutButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function signOut() {
@@ -15,8 +13,8 @@ export function SignOutButton() {
       const supabase = createBrowserClient();
       await supabase.auth.signOut();
     } finally {
-      router.push("/login");
-      router.refresh();
+      // Hard redirect so middleware re-evaluates with the cleared session.
+      window.location.assign("/login");
     }
   }
 
