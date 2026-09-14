@@ -62,6 +62,16 @@ export default async function JobDetailPage({
     bullets?: string[];
   } | null;
 
+  // Any existing outreach draft for this application, so the panel rehydrates.
+  const { data: outreach } = application
+    ? await supabase
+        .from("outreach")
+        .select("id, contact_name, contact_title, contact_email, message, status")
+        .eq("user_id", user.id)
+        .eq("application_id", application.id)
+        .maybeSingle()
+    : { data: null };
+
   return (
     <JobDetailClient
       userId={user.id}
@@ -90,6 +100,18 @@ export default async function JobDetailPage({
               status: application.status,
               stage: application.stage,
               sent_at: application.sent_at,
+            }
+          : null
+      }
+      outreach={
+        outreach
+          ? {
+              id: outreach.id,
+              contact_name: outreach.contact_name ?? "",
+              contact_title: outreach.contact_title ?? "",
+              contact_email: outreach.contact_email ?? "",
+              message: outreach.message ?? "",
+              status: outreach.status,
             }
           : null
       }

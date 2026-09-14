@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Copy, Check, ExternalLink, Sparkles } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase-browser";
+import { openCheckout } from "@/lib/checkout";
 import { ScoreRing } from "./ScoreRing";
+import { OutreachPanel, type OutreachDraft } from "./OutreachPanel";
 import type { Plan } from "@/lib/plan";
 import type { ApplicationStage, ApplicationStatus } from "@/types";
 
@@ -36,32 +38,20 @@ function fmtDate(iso: string | null): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
-async function openCheckout(): Promise<string> {
-  try {
-    const res = await fetch("/api/stripe/checkout", { method: "POST" });
-    const data = (await res.json().catch(() => ({}))) as { url?: string };
-    if (data.url) {
-      window.location.href = data.url;
-      return "";
-    }
-    return "Checkout isn't available yet. Please try again shortly.";
-  } catch {
-    return "Something went wrong starting checkout.";
-  }
-}
-
 export function JobDetailClient({
   userId,
   plan,
   job,
   match,
   application,
+  outreach,
 }: {
   userId: string;
   plan: Plan;
   job: JobProps;
   match: MatchProps;
   application: ApplicationProps | null;
+  outreach: OutreachDraft | null;
 }) {
   const [appId, setAppId] = useState<string | null>(application?.id ?? null);
   const [bullets, setBullets] = useState<string[]>(application?.bullets ?? []);
@@ -161,30 +151,35 @@ export function JobDetailClient({
     }
   }
 
-  // Ensure an application row exists (create if none), then mark it applied.
+  // Ensure an application row exists (create if none). Returns its id, or null
+  // on failure. Shared by Apply and the outreach panel.
+  async function ensureApplication(): Promise<string | null> {
+    if (appId) return appId;
+    const supabase = createBrowserClient();
+    const { data, error } = await supabase
+      .from("applications")
+      .insert({
+        user_id: userId,
+        job_id: job.id,
+        status: "draft",
+        stage: "matched",
+      })
+      .select("id")
+      .single();
+    if (error || !data) return null;
+    setAppId(data.id);
+    return data.id;
+  }
+
+  // Open the real posting, then record the application as applied.
   async function apply() {
     window.open(job.apply_url, "_blank", "noopener,noreferrer");
     setApplying(true);
     try {
-      let id = appId;
+      const id = await ensureApplication();
       if (!id) {
-        const supabase = createBrowserClient();
-        const { data, error } = await supabase
-          .from("applications")
-          .insert({
-            user_id: userId,
-            job_id: job.id,
-            status: "draft",
-            stage: "matched",
-          })
-          .select("id")
-          .single();
-        if (error || !data) {
-          setNotice("Couldn't record the application.");
-          return;
-        }
-        id = data.id;
-        setAppId(id);
+        setNotice("Couldn't record the application.");
+        return;
       }
       const res = await fetch(`/api/applications/${id}/send`, {
         method: "POST",
@@ -347,6 +342,14 @@ export function JobDetailClient({
             </div>
           </div>
         )}
+
+        <OutreachPanel
+          plan={plan}
+          company={job.company_name}
+          role={job.title}
+          ensureApplication={ensureApplication}
+          initial={outreach}
+        />
       </div>
     </div>
   );
