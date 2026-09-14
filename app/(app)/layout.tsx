@@ -1,9 +1,54 @@
-// Authenticated app shell. Session gating and the onboarding redirect are
-// implemented in Prompt 2 (see middleware.ts). This is the layout placeholder.
-export default function AppLayout({
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerUser } from "@/lib/supabase-server";
+import { getPlan } from "@/lib/plan";
+import { Sidebar } from "@/components/app/Sidebar";
+import { MobileTabBar } from "@/components/app/MobileTabBar";
+import { SignOutButton } from "@/components/app/SignOutButton";
+import { NotificationsSlot } from "@/components/app/NotificationsSlot";
+
+export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="min-h-screen">{children}</div>;
+  const user = await getServerUser();
+  if (!user) redirect("/login");
+
+  const plan = await getPlan(user.id);
+
+  return (
+    <div className="min-h-screen bg-base">
+      <Sidebar />
+      <MobileTabBar />
+
+      <div className="md:pl-60">
+        <header className="flex h-14 items-center justify-between border-b border-white/10 px-6">
+          {/* left: breadcrumb slot (filled by pages later) */}
+          <div />
+
+          <div className="flex items-center gap-3 sm:gap-4">
+            <NotificationsSlot />
+            <span className="hidden text-sm text-muted sm:inline">
+              {user.email}
+            </span>
+            {plan === "free" && (
+              <Link
+                href="/settings"
+                className="rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-white transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base"
+              >
+                Upgrade
+              </Link>
+            )}
+            <SignOutButton />
+          </div>
+        </header>
+
+        {/* pb-24 clears the mobile tab bar; reset at md where it's hidden */}
+        <main className="mx-auto max-w-6xl px-6 py-8 pb-24 md:pb-8">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
 }

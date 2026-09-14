@@ -1,9 +1,9 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient as createSSRBrowserClient } from "@supabase/ssr";
 
-// Browser Supabase client. Uses the public anon key and is always RLS-scoped
-// to the signed-in user. Never import the service-role key here.
-export function createSupabaseBrowserClient() {
-  return createBrowserClient(
+// Browser Supabase client (public anon key, RLS-scoped to the signed-in user).
+// Never reference the service-role key here.
+export function createBrowserClient() {
+  return createSSRBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );

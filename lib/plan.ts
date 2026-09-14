@@ -1,17 +1,23 @@
-import { createSupabaseServerClient } from "./supabase-server";
+import { createServerClient } from "./supabase-server";
 
 export type Plan = "free" | "pro";
 
-// Reads subscriptions.status to gate matching / generation / outreach.
-// Wired to real data in Prompt 12 (billing). Returns "free" by default.
+// Reads the user's subscription status. 'pro' when status = 'active',
+// otherwise 'free'. Gates matching / generation / outreach in later prompts.
 export async function getPlan(userId: string): Promise<Plan> {
-  const supabase = createSupabaseServerClient();
-  const { data } = await supabase
-    .from("subscriptions")
-    .select("plan, status")
-    .eq("user_id", userId)
-    .maybeSingle();
+  try {
+    const supabase = await createServerClient();
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", userId)
+      .maybeSingle();
+    return data?.status === "active" ? "pro" : "free";
+  } catch {
+    return "free";
+  }
+}
 
-  if (data?.status === "active" && data?.plan === "pro") return "pro";
-  return "free";
+export async function isPro(userId: string): Promise<boolean> {
+  return (await getPlan(userId)) === "pro";
 }
