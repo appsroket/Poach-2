@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* POACH brand tokens */
+  --base: #0a0a0b;
+  --ink: #ededef;
+  --muted: #a1a1aa;
+  --accent: #7c5cff;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--base);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  /* Standard POACH card. */
+  .card {
+    @apply rounded-2xl border border-white/10 bg-white/5;
+  }
+}
+
+/* Respect reduced-motion globally. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
