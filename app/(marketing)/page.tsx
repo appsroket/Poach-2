@@ -1,16 +1,31 @@
+import { Navbar } from "@/components/marketing/Navbar";
+import { Hero } from "@/components/marketing/Hero";
+import { Marquee } from "@/components/marketing/Marquee";
+import { ProblemSolution } from "@/components/marketing/ProblemSolution";
+import { Features } from "@/components/marketing/Features";
+import { Stats } from "@/components/marketing/Stats";
+import { Testimonials } from "@/components/marketing/Testimonials";
+import { Process } from "@/components/marketing/Process";
+import { Faq } from "@/components/marketing/Faq";
+import { FinalCta } from "@/components/marketing/FinalCta";
+import { Footer } from "@/components/marketing/Footer";
+
 export default function MarketingPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-6 py-24 text-center">
-      <span className="mb-4 inline-block rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted">
-        Prompt 1 · Landing page
-      </span>
-      <h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl">
-        Poach
-      </h1>
-      <p className="mt-4 max-w-xl text-muted">
-        Your autonomous AI job-search agent. This is the marketing route
-        placeholder — the consolidated landing page is built in Prompt 1.
-      </p>
-    </main>
+    <>
+      <Navbar />
+      <main>
+        <Hero />
+        <Marquee />
+        <ProblemSolution />
+        <Features />
+        <Stats />
+        <Testimonials />
+        <Process />
+        <Faq />
+        <FinalCta />
+      </main>
+      <Footer />
+    </>
   );
 }
