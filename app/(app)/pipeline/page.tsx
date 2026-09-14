@@ -1,11 +1,16 @@
-export default function PipelinePage() {
-  return (
-    <main className="mx-auto max-w-6xl px-6 py-16">
-      <h1 className="font-display text-2xl font-bold">Pipeline</h1>
-      <p className="mt-3 text-sm text-muted">
-        CRM board (matched → applied → replied → interview → offer). Route
-        placeholder.
-      </p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+import { createServerClient, getServerUser } from "@/lib/supabase-server";
+import { getPipelineData } from "@/lib/pipeline";
+import { PipelineBoard } from "@/components/app/PipelineBoard";
+
+export const dynamic = "force-dynamic";
+
+export default async function PipelinePage() {
+  const user = await getServerUser();
+  if (!user) redirect("/login");
+
+  const supabase = await createServerClient();
+  const data = await getPipelineData(supabase);
+
+  return <PipelineBoard initial={data} />;
 }
