@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Reveal } from "./Reveal";
 
 type Status = "idle" | "loading" | "success" | "error";
 
 export function FinalCta() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
   async function submit() {
-    if (!name.trim() || !email.trim()) {
+    const trimmedEmail = email.trim();
+    if (!name.trim() || !trimmedEmail) {
       setStatus("error");
       setMessage("Please enter your name and email.");
       return;
@@ -20,16 +23,16 @@ export function FinalCta() {
     setStatus("loading");
     setMessage("");
     try {
-      const res = await fetch("/api/lead", {
+      // Capture the lead (best-effort), then send them into sign-up.
+      await fetch("/api/lead", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
-      });
-      if (!res.ok) throw new Error("request failed");
+        body: JSON.stringify({ name, email: trimmedEmail }),
+      }).catch(() => null);
+
       setStatus("success");
-      setMessage("You're in. Your free preview updates today.");
-      setName("");
-      setEmail("");
+      setMessage("You're in — taking you to sign in…");
+      router.push(`/login?email=${encodeURIComponent(trimmedEmail)}`);
     } catch {
       setStatus("error");
       setMessage("Something went wrong. Please try again.");

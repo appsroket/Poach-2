@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabase-browser";
 
 type Status = "idle" | "sending" | "sent" | "error";
@@ -10,6 +10,13 @@ export default function LoginPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Prefill the email when arriving from the landing CTA (/login?email=…).
+  // Read on the client after mount to avoid a hydration mismatch.
+  useEffect(() => {
+    const prefill = new URLSearchParams(window.location.search).get("email");
+    if (prefill) setEmail(prefill);
+  }, []);
 
   async function sendMagicLink() {
     if (!email.trim()) {
