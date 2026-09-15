@@ -31,8 +31,10 @@ export function FinalCta() {
       }).catch(() => null);
 
       setStatus("success");
-      setMessage("You're in — taking you to sign in…");
-      router.push(`/login?email=${encodeURIComponent(trimmedEmail)}`);
+      setMessage("You're in — taking you to sign up…");
+      router.push(
+        `/login?mode=signup&email=${encodeURIComponent(trimmedEmail)}`
+      );
     } catch {
       setStatus("error");
       setMessage("Something went wrong. Please try again.");

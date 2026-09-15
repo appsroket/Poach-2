@@ -3,10 +3,15 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabase-browser";
 
-type Status = "idle" | "sending" | "sent" | "error";
+type Status = "idle" | "sending" | "sent" | "confirm" | "error";
+type Method = "password" | "magic";
+type Mode = "signin" | "signup";
 
 export default function LoginPage() {
+  const [method, setMethod] = useState<Method>("password");
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -14,10 +19,63 @@ export default function LoginPage() {
   // Prefill the email when arriving from the landing CTA (/login?email=…).
   // Read on the client after mount to avoid a hydration mismatch.
   useEffect(() => {
-    const prefill = new URLSearchParams(window.location.search).get("email");
+    const params = new URLSearchParams(window.location.search);
+    const prefill = params.get("email");
     if (prefill) setEmail(prefill);
+    if (params.get("mode") === "signup") setMode("signup");
   }, []);
 
+  function resetMessage() {
+    setStatus("idle");
+    setError("");
+  }
+
+  // --- Email + password ----------------------------------------------------
+  async function submitPassword() {
+    const addr = email.trim();
+    if (!addr) {
+      setStatus("error");
+      setError("Enter your email address.");
+      return;
+    }
+    if (password.length < 6) {
+      setStatus("error");
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    setStatus("sending");
+    setError("");
+    try {
+      const supabase = createBrowserClient();
+      if (mode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: addr,
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/callback` },
+        });
+        if (error) throw error;
+        // If confirmation is required there's no session yet.
+        if (data.session) {
+          window.location.assign("/dashboard");
+          return;
+        }
+        setStatus("confirm");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: addr,
+          password,
+        });
+        if (error) throw error;
+        // Hard navigate so middleware re-evaluates with the fresh session.
+        window.location.assign("/dashboard");
+      }
+    } catch (e) {
+      setStatus("error");
+      setError(e instanceof Error ? e.message : "Something went wrong.");
+    }
+  }
+
+  // --- Magic link ----------------------------------------------------------
   async function sendMagicLink() {
     if (!email.trim()) {
       setStatus("error");
@@ -40,6 +98,7 @@ export default function LoginPage() {
     }
   }
 
+  // --- Google --------------------------------------------------------------
   async function continueWithGoogle() {
     setGoogleLoading(true);
     setError("");
@@ -50,7 +109,6 @@ export default function LoginPage() {
         options: { redirectTo: `${window.location.origin}/callback` },
       });
       if (error) throw error;
-      // On success the browser is redirected to Google; nothing else to do.
     } catch (e) {
       setGoogleLoading(false);
       setError(e instanceof Error ? e.message : "Could not start Google sign-in.");
@@ -58,6 +116,7 @@ export default function LoginPage() {
   }
 
   const busy = status === "sending" || googleLoading;
+  const done = status === "sent" || status === "confirm";
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -72,61 +131,176 @@ export default function LoginPage() {
           </a>
 
           <h1 className="mt-10 font-display text-2xl font-bold tracking-tight">
-            Sign in
+            {mode === "signup" ? "Create your account" : "Sign in"}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            No password needed — we&apos;ll email you a magic link.
+            {mode === "signup"
+              ? "Start finding the jobs the boards don't show."
+              : "Welcome back — pick up your hunt where you left off."}
           </p>
 
-          {status === "sent" ? (
+          {done ? (
             <div
               role="status"
               className="mt-8 rounded-2xl border border-accent/40 bg-accent/5 p-5 text-sm text-ink"
             >
-              Check your inbox ✉️
-              <p className="mt-1 text-muted">
-                We sent a magic link to{" "}
-                <span className="text-ink">{email.trim()}</span>. Click it to
-                finish signing in.
-              </p>
+              {status === "confirm" ? (
+                <>
+                  Confirm your email ✉️
+                  <p className="mt-1 text-muted">
+                    We sent a confirmation link to{" "}
+                    <span className="text-ink">{email.trim()}</span>. Click it,
+                    then come back and sign in.
+                  </p>
+                </>
+              ) : (
+                <>
+                  Check your inbox ✉️
+                  <p className="mt-1 text-muted">
+                    We sent a magic link to{" "}
+                    <span className="text-ink">{email.trim()}</span>. Click it to
+                    finish signing in.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                void sendMagicLink();
-              }}
-              className="mt-8 space-y-4"
-              noValidate
-            >
-              <div>
-                <label htmlFor="email" className="sr-only">
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={busy}
-                  className="w-full rounded-full border border-white/10 bg-white/5 px-5 py-3 text-ink placeholder:text-muted focus-visible:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
-                />
+            <>
+              {/* Method tabs */}
+              <div className="mt-8 flex gap-1 rounded-full border border-white/10 bg-white/5 p-1 text-sm">
+                {(["password", "magic"] as Method[]).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setMethod(m);
+                      resetMessage();
+                    }}
+                    className={`flex-1 rounded-full px-3 py-1.5 transition-colors ${
+                      method === m
+                        ? "bg-accent text-white"
+                        : "text-muted hover:text-ink"
+                    }`}
+                  >
+                    {m === "password" ? "Password" : "Magic link"}
+                  </button>
+                ))}
               </div>
 
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_40px_rgba(124,92,255,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {status === "sending" ? "Sending…" : "Send me a magic link"}
-              </button>
-            </form>
-          )}
+              {method === "password" ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void submitPassword();
+                  }}
+                  className="mt-6 space-y-4"
+                  noValidate
+                >
+                  <div>
+                    <label htmlFor="email" className="sr-only">
+                      Email address
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={busy}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="password" className="sr-only">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      type="password"
+                      autoComplete={
+                        mode === "signup" ? "new-password" : "current-password"
+                      }
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={busy}
+                      className={inputCls}
+                    />
+                  </div>
 
-          {status !== "sent" && (
-            <>
+                  <button type="submit" disabled={busy} className={primaryBtn}>
+                    {status === "sending"
+                      ? mode === "signup"
+                        ? "Creating account…"
+                        : "Signing in…"
+                      : mode === "signup"
+                        ? "Create account"
+                        : "Sign in"}
+                  </button>
+
+                  <p className="text-center text-sm text-muted">
+                    {mode === "signup" ? (
+                      <>
+                        Already have an account?{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode("signin");
+                            resetMessage();
+                          }}
+                          className="text-accent hover:underline"
+                        >
+                          Sign in
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        New to Poach?{" "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode("signup");
+                            resetMessage();
+                          }}
+                          className="text-accent hover:underline"
+                        >
+                          Create an account
+                        </button>
+                      </>
+                    )}
+                  </p>
+                </form>
+              ) : (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void sendMagicLink();
+                  }}
+                  className="mt-6 space-y-4"
+                  noValidate
+                >
+                  <div>
+                    <label htmlFor="magic-email" className="sr-only">
+                      Email address
+                    </label>
+                    <input
+                      id="magic-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={busy}
+                      className={inputCls}
+                    />
+                  </div>
+                  <button type="submit" disabled={busy} className={primaryBtn}>
+                    {status === "sending" ? "Sending…" : "Send me a magic link"}
+                  </button>
+                </form>
+              )}
+
               <div className="my-6 flex items-center gap-4 text-xs text-muted">
                 <span className="h-px flex-1 bg-white/10" />
                 or
@@ -177,6 +351,12 @@ export default function LoginPage() {
     </div>
   );
 }
+
+const inputCls =
+  "w-full rounded-full border border-white/10 bg-white/5 px-5 py-3 text-ink placeholder:text-muted focus-visible:border-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60";
+
+const primaryBtn =
+  "w-full rounded-full bg-accent px-6 py-3 text-sm font-medium text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_40px_rgba(124,92,255,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60";
 
 function GoogleIcon() {
   return (
