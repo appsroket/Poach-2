@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { MatchCard } from "./MatchCard";
 import { SkeletonGrid, EmptyState } from "./DashboardStates";
+import { useToast } from "./Toast";
 import type { DashboardMatch } from "@/lib/matches";
 import type { Plan } from "@/lib/plan";
 
@@ -62,6 +64,16 @@ export function DashboardClient({
     setUpdatedLabel(
       new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     );
+  }, []);
+
+  // Welcome toast after returning from a successful Stripe Checkout.
+  const searchParams = useSearchParams();
+  const { success } = useToast();
+  useEffect(() => {
+    if (searchParams.get("upgraded") === "1") {
+      success("Welcome to Poach Pro — every match is unlocked.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Revalidate against the API on mount so late-arriving matches show up

@@ -6,6 +6,7 @@ import { MobileTabBar } from "@/components/app/MobileTabBar";
 import { SignOutButton } from "@/components/app/SignOutButton";
 import { NotificationsSlot } from "@/components/app/NotificationsSlot";
 import { UpgradePill } from "@/components/app/UpgradePill";
+import { ToastProvider } from "@/components/app/Toast";
 
 export default async function AppLayout({
   children,
@@ -39,7 +40,7 @@ export default async function AppLayout({
 
         {/* pb-24 clears the mobile tab bar; reset at md where it's hidden */}
         <main className="mx-auto max-w-6xl px-6 py-8 pb-24 md:pb-8">
-          {children}
+          <ToastProvider>{children}</ToastProvider>
         </main>
       </div>
     </div>
