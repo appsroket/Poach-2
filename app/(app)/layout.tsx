@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerUser } from "@/lib/supabase-server";
 import { getPlan } from "@/lib/plan";
@@ -6,6 +5,7 @@ import { Sidebar } from "@/components/app/Sidebar";
 import { MobileTabBar } from "@/components/app/MobileTabBar";
 import { SignOutButton } from "@/components/app/SignOutButton";
 import { NotificationsSlot } from "@/components/app/NotificationsSlot";
+import { UpgradePill } from "@/components/app/UpgradePill";
 
 export default async function AppLayout({
   children,
@@ -32,14 +32,7 @@ export default async function AppLayout({
             <span className="hidden text-sm text-muted sm:inline">
               {user.email}
             </span>
-            {plan === "free" && (
-              <Link
-                href="/settings"
-                className="rounded-full bg-accent px-3 py-1.5 text-xs font-medium text-white transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-base"
-              >
-                Upgrade
-              </Link>
-            )}
+            {plan === "free" && <UpgradePill />}
             <SignOutButton />
           </div>
         </header>
